@@ -109,9 +109,50 @@ def visualize(df):
     plt.title('Distribution of Number of Comments amongst Reviews')
     plt.show()
 
+def highest_lowest_reviews_applications(df):
+
+    # Compute gathering all the data with the same app_id, adding a new columns for that
+    top_review_counts = df.groupby(['app_id','app_name']).size().reset_index(name='count_reviews')
+
+    # Find the max
+    max_count = top_review_counts['count_reviews'].max()
+    
+    # Select all the apps with the max number of reviews
+    top_apps = top_review_counts[top_review_counts['count_reviews'] == max_count][['app_name','count_reviews']]
+
+    print(f"Top apps with the most reviews:  {top_apps}\n")
 
 
- 
+    # Compute gathering all the data with the same app_id, adding a new columns for that
+    bottom_review_counts = df.groupby(['app_id','app_name']).size().reset_index(name='count_reviews')
+
+    # Find the minimum
+    min_count = bottom_review_counts['count_reviews'].min()
+    
+    # Select all the apps with the minimum number of reviews
+    bottom_apps = bottom_review_counts[bottom_review_counts['count_reviews'] == min_count][['app_name','count_reviews']]
+
+    print(f"Top apps with the minimum reviews:  {bottom_apps}\n")
+
+def reviews_count_plot(df):
+    
+    review_counts = df.groupby('app_name').size().reset_index(name='count_reviews')
+    review_counts = review_counts.sort_values(by='count_reviews', ascending=False)
+
+
+
+    #Create the bar plot
+    plt.figure(figsize=(10, 6))
+    sns.barplot(data=review_counts, x='app_name', y='count_reviews')
+    plt.title('Number of Reviews for Each Application', fontsize=12)
+    plt.xlabel('Application Name', fontsize=12)
+    plt.ylabel('Number of Reviews', fontsize=12)
+    current_ticks = plt.xticks()[0]
+
+    plt.xticks(ticks=[current_ticks[0], current_ticks[-1]], 
+           labels=[review_counts['app_name'].iloc[0], review_counts['app_name'].iloc[-1]], 
+           rotation=90)
+    plt.show()
 
 
 
