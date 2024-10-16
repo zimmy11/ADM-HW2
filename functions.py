@@ -155,4 +155,45 @@ def reviews_count_plot(df):
     plt.show()
 
 
+def puchased_gratis_reviewers(df):
 
+    top_5_apps = df['app_name'].value_counts().head(5)
+    top_5_apps_names = top_5_apps.index
+    total_number_of_reviewers =   pd.DataFrame(top_5_apps)
+
+    reviewers_purchased = df[(df['app_name'].isin(top_5_apps_names)) & (df['steam_purchase'] == True)].groupby('app_name').count()
+    reviewers_gratis = df[(df['app_name'].isin(top_5_apps_names)) & (df['received_for_free'] == True)].groupby('app_name').count()
+    reviewers_purchased = pd.DataFrame({
+    'percentage_of_purchase_reviewers': round(reviewers_purchased['steam_purchase'] * 100 / total_number_of_reviewers['count'], 2)
+    })
+    reviewers_gratis = pd.DataFrame({
+    'percentage_of_free_reviewers': round(reviewers_gratis['received_for_free'] * 100 / total_number_of_reviewers['count'], 2)
+    })
+    print(f"Percentage of Reviewers that purchased the app for the Top 5 Most Reviewed Apps:\n {reviewers_purchased}")
+    print(f"Percentage of Reviewers that received for free the app for the Top 5 Most Reviewed Apps:\n {reviewers_gratis}")
+
+
+def most_least_recommended_reviews_applications(df):
+
+    # Compute gathering all the data with the same app_id, adding a new columns for that
+    top_review_counts = df.groupby(['app_id','app_name']).size().reset_index(name='count_reviews')
+
+    # Find the max
+    max_count = top_review_counts['count_reviews'].max()
+    
+    # Select all the apps with the max number of reviews
+    top_apps = top_review_counts[top_review_counts['count_reviews'] == max_count][['app_name','count_reviews']]
+
+    print(f"Top Most recommended apps with the most reviews:  {top_apps}\n")
+
+
+    # Compute gathering all the data with the same app_id, adding a new columns for that
+    bottom_review_counts = df.groupby(['app_id','app_name']).size().reset_index(name='count_reviews')
+
+    # Find the minimum
+    min_count = bottom_review_counts['count_reviews'].min()
+    
+    # Select all the apps with the minimum number of reviews
+    bottom_apps = bottom_review_counts[bottom_review_counts['count_reviews'] == min_count][['app_name','count_reviews']]
+
+    print(f"Top apps with the minimum reviews:  {bottom_apps}\n")
