@@ -3,13 +3,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from scipy.stats import pearsonr, spearmanr, kendalltau
-
+from textblob import TextBlob
+from langdetect import detect
+from googletrans import Translator
 
 def explore(df):
     print("List of Columns of the DataFrame:", df.columns, "\n")
     print("Shape of the DataFrame:", df.shape, "\n")
     print("Data Types of the columns:\n", df.dtypes, "\n")
-    print("Number of missing values:",df.isnull().sum())
+    print("Number of missing values:\n",df.isnull().sum())
 
 
 def ouliers(df):
@@ -251,3 +253,97 @@ def statistical_correlation(df):
         print("There is a statistically significant monotonic correlation (Kendall).")
     else:
         print("There is no statistically significant monotonic correlation (Kendall).")
+
+def detect_language(text):
+    try:
+        return detect(text)
+    except:
+        return 'unknown'
+
+# Function to translate non-English text to English
+def translate_to_english(text):
+    translator = Translator()
+    try:
+        lang = detect(text)
+        if lang != 'en':
+            translated = translator.translate(text, src=lang, dest='en').text
+            return translated
+        else:
+            return text
+    except Exception as e:
+        return text
+
+# Function to classify sentiment
+def classify_sentiment(text):
+    analysis = TextBlob(text)
+    polarity = analysis.sentiment.polarity
+    if polarity > 0:
+        return 'positive'
+    elif polarity < 0:
+        return 'negative'
+    else:
+        return 'neutral'
+    
+def sentiment_classification(df):
+     # Count the occurrences of each language
+    top_languages = df['language'].value_counts().nlargest(3).index.tolist()
+
+    # Filter the DataFrame to only include the top 3 languages
+    df_top_languages = df[df['language'].isin(top_languages)]
+
+    #  Detect languages
+    df_top_languages['language'] = df_top_languages['review'].apply(detect_language)
+
+    # Translate non-English reviews to English
+    df_top_languages['translated_review'] = df_top_languages['review'].apply(translate_to_english)
+
+    #  Perform sentiment analysis
+    df_top_languages['sentiment'] = df_top_languages['translated_review'].apply(classify_sentiment)
+
+    return df_top_languages
+
+def compute_distribution(df):
+    sentiment_distribution = df['sentiment'].value_counts(normalize=True) * 100
+    # Display sentiment distribution
+    print("Sentiment Distribution (in %):")
+    print(sentiment_distribution)
+
+def comparison_sentiment_recommendations(df):
+    # Analyze sentiment distribution for recommended and non-recommended reviews
+    sentiment_summary = df.groupby(['recommended', 'sentiment']).size().unstack(fill_value=0)
+
+    # Calculate the percentage of each sentiment category for recommended and non-recommended reviews
+    sentiment_percentage = sentiment_summary.div(sentiment_summary.sum(axis=1), axis=0) * 100
+
+    print("Sentiment Distribution by Recommendation:")
+    print(sentiment_summary)
+
+    print("\nSentiment Percentage by Recommendation:")
+    print(sentiment_percentage)
+
+
+def correlation_sentiment_helpful_votes(df):
+    df['sentiment'] = df['sentiment'].astype('category').cat.codes
+
+    
+    plt.figure(figsize=(10, 6))
+    sns.scatterplot(data=df, x='category_numeric', y='votes_helpful')
+
+    plt.title('Scatter Plot: Sentiment vs Number of Helpful Votes')
+    plt.xlabel('Sentiment (Positive, Neutral, Negative)')
+    plt.ylabel('Number of Helpful Votes')
+
+
+    # Show
+    plt.grid(True)
+    plt.show()
+
+
+
+def algorithmic_question():
+    t = int(input())
+    for i in range(t):
+        input_n = input()
+        n, k = list(map(int, input_n.split()))
+        output = [0] * n
+
