@@ -6,6 +6,8 @@ from scipy.stats import pearsonr, spearmanr, kendalltau
 from textblob import TextBlob
 from langdetect import detect
 from googletrans import Translator
+import nltk
+from nltk.sentiment import SentimentIntensityAnalyzer
 
 def explore(df):
     print("List of Columns of the DataFrame:", df.columns, "\n")
@@ -254,17 +256,44 @@ def statistical_correlation(df):
     else:
         print("There is no statistically significant monotonic correlation (Kendall).")
 
-def detect_language(text):
-    try:
-        return detect(text)
-    except:
-        return 'unknown'
 
+    
+translator = Translator()
+
+language_codes = {
+    'english': 'en',
+    'schinese': 'zh-cn',  
+    'russian': 'ru',
+    'brazilian': 'pt',    
+    'spanish': 'es',
+    'german': 'de',
+    'turkish': 'tr',
+    'korean': 'ko',
+    'french': 'fr',
+    'polish': 'pl',
+    'tchinese': 'zh-tw',  
+    'czech': 'cs',
+    'italian': 'it',
+    'thai': 'th',
+    'japanese': 'ja',
+    'portuguese': 'pt',   
+    'swedish': 'sv',
+    'dutch': 'nl',
+    'hungarian': 'hu',
+    'latam': 'es-419',   
+    'danish': 'da',
+    'finnish': 'fi',
+    'norwegian': 'no',
+    'romanian': 'ro',
+    'ukrainian': 'uk',
+    'greek': 'el',
+    'bulgarian': 'bg',
+    'vietnamese': 'vi'
+}
 # Function to translate non-English text to English
-def translate_to_english(text):
-    translator = Translator()
+def translate_to_english(text, lang_name):
     try:
-        lang = detect(text)
+        lang = language_codes.get(lang_name)
         if lang != 'en':
             translated = translator.translate(text, src=lang, dest='en').text
             return translated
@@ -273,10 +302,16 @@ def translate_to_english(text):
     except Exception as e:
         return text
 
+
+nltk.download('vader_lexicon')
+
+# Initialize the sentiment analyzer of Vader
+sia = SentimentIntensityAnalyzer()
+
 # Function to classify sentiment
 def classify_sentiment(text):
-    analysis = TextBlob(text)
-    polarity = analysis.sentiment.polarity
+    sentiment_scores = sia.polarity_scores(text)
+    polarity = sentiment_scores['compound']
     if polarity > 0:
         return 'positive'
     elif polarity < 0:
@@ -285,20 +320,22 @@ def classify_sentiment(text):
         return 'neutral'
     
 def sentiment_classification(df):
+
      # Count the occurrences of each language
-    top_languages = df['language'].value_counts().nlargest(3).index.tolist()
+    top_languages = df['language'].value_counts().nlargest(1).index.tolist()
 
     # Filter the DataFrame to only include the top 3 languages
     df_top_languages = df[df['language'].isin(top_languages)]
 
-    #  Detect languages
-    df_top_languages['language'] = df_top_languages['review'].apply(detect_language)
+    df_top_languages = df_top_languages[df_top_languages['review'].notna()]
 
+
+    
     # Translate non-English reviews to English
-    df_top_languages['translated_review'] = df_top_languages['review'].apply(translate_to_english)
+    # df_top_languages['translated_review'] = df_top_languages.apply(lambda row: translate_to_english(row['review'], row['language']), axis=1)
 
     #  Perform sentiment analysis
-    df_top_languages['sentiment'] = df_top_languages['translated_review'].apply(classify_sentiment)
+    df_top_languages['sentiment'] = df_top_languages['review'].apply(classify_sentiment)
 
     return df_top_languages
 
@@ -325,7 +362,7 @@ def comparison_sentiment_recommendations(df):
 def correlation_sentiment_helpful_votes(df):
     df['sentiment'] = df['sentiment'].astype('category').cat.codes
 
-    
+
     plt.figure(figsize=(10, 6))
     sns.scatterplot(data=df, x='category_numeric', y='votes_helpful')
 
