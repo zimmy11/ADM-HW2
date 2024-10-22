@@ -364,7 +364,7 @@ def correlation_sentiment_helpful_votes(df):
 
 
     plt.figure(figsize=(10, 6))
-    sns.scatterplot(data=df, x='category_numeric', y='votes_helpful')
+    sns.scatterplot(data=df, x='sentiment', y='votes_helpful')
 
     plt.title('Scatter Plot: Sentiment vs Number of Helpful Votes')
     plt.xlabel('Sentiment (Positive, Neutral, Negative)')
