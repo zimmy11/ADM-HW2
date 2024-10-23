@@ -377,10 +377,32 @@ def correlation_sentiment_helpful_votes(df):
 
 
 
-def algorithmic_question():
-    t = int(input())
-    for i in range(t):
-        input_n = input()
-        n, k = list(map(int, input_n.split()))
-        output = [0] * n
+def algorithmic_question(n, k):
+    # if the list can't be made it will not print
+    no_fail = True
+    # creating a list of k elements that contains the floor division
+    lista = [n//k] * k
+    # computing how much we miss from the original number
+    reminder = (n-sum(lista))
+
+    # if we miss a even number we can just add it to the first element
+    # and the list will keep it's polarity
+    # if it is odd we need to swap the polarity of the list, this is possible only if the 
+    # list is odd as the first element is changed by the reminder and the k-1 elements 
+    # are changed by loopign +1 and -1.
+    # if k-1 is odd we can't match the -1 and +1 and therfore cant cahnge the polarity
+
+    if reminder % 2 != 0: # if reminder is odd
+        if k % 2 == 0 or lista[0] == 1: # if cant +1 -1 without change or get 0
+            no_fail = False # will not print the list
+            print("NO")
+        else:
+            for i in range(1, k):# alternate +1 -1 from second to last element
+                if i % 2 == 0:
+                    lista[i] += 1
+                else:
+                    lista[i] -= 1
+    if no_fail: # if the list is good
+        lista[0] += reminder # sum reminder to the first element
+        print("YES\n", *lista) # print yes and the items
 
