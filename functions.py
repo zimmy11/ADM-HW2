@@ -233,7 +233,6 @@ def statistical_correlation(df):
         print("There is no statistically significant linear correlation (Pearson).")
 
 
-nltk.download('vader_lexicon')
 
 # Initialize the sentiment analyzer of Vader
 sia = SentimentIntensityAnalyzer()
@@ -405,10 +404,4 @@ def check_correlation(df):
     # Pearson correlation
     pearson_corr, p_value_pearson = pearsonr(df['author.num_games_owned'], df['author.num_reviews'])
     print("Pearson correlation coefficient:", pearson_corr, "p-value:", p_value_pearson)
-
-
-
-
-
-
 
