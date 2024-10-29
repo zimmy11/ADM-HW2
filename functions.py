@@ -2,12 +2,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from scipy.stats import pearsonr, spearmanr, kendalltau
-from textblob import TextBlob
-from langdetect import detect
-from googletrans import Translator
+from scipy.stats import pearsonr
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
+from scipy.stats import chi2_contingency
+
 
 def explore(df):
     print("List of Columns of the DataFrame:", df.columns, "\n")
@@ -23,39 +22,42 @@ def ouliers(df):
     IQR = Q3 - Q1
     lower_bound = Q1 - 1.5 * IQR
     upper_bound = Q3 + 1.5 * IQR
+    # We Filter for all the elements the have comment_count smaller than lower_bound
+    #  and greater than upper_bound
     outliers = df[(df['comment_count'] < lower_bound) | (df['comment_count'] > upper_bound)]
     print("Number of outliers in number of comments per app:", outliers.shape[0])
 
 
 def stats(df):
+    # Print number of unique reviews
     total_reviews = df['review_id'].nunique()
     print(f"Total reviews: {total_reviews}\n")
 
+    # Print number of apps reviewed
     unique_apps = df['app_id'].nunique()
     print(f"Unique apps: {unique_apps}\n")
 
+    # Print the average of helpful votes per review
     average_votes_helpful = df['votes_helpful'].mean()
     print(f"Average helpful votes: {average_votes_helpful}\n")
 
-    reviews_per_app = df['app_name'].value_counts().head()
-    print(f"Number of reviews for app (first rows): {reviews_per_app}\n")
-
+    # Prints the number of reviews per app for the top 5 most reviewed apps
     top_5_apps = df['app_name'].value_counts().head(5)
     print(f"Top 5 apps with the most reviews:  {top_5_apps}\n")
 
+    # Prints the number of reviews per author for the top 5 reviewers
     top_5_authors = df['author.steamid'].value_counts().head(5)
     print(f"Top 5 authors with the most reviews: {top_5_authors}\n")
 
-    average_playtime_forever = df['author.playtime_forever'].mean()
+    # Prints the average of the playtime of all the reviewers
+    # We group by author.steamid firstly and then compute the mean
+    filtered_df = df.groupby('author.steamid').first()
+    average_playtime_forever = filtered_df['author.playtime_forever'].mean()
     print(f"Average playtime forever: {average_playtime_forever}")
 
+    # Prints the top 5 most used languages in the reviews
     top_5_languages = df['language'].value_counts().head()
     print(f"Top 5 Languages most used for reviews: {top_5_languages}\n")
-
-
-
-
-
 
 
 
@@ -95,23 +97,6 @@ def visualize(df):
     plt.show()
 
 
-    # Scatter Plot
-    unique_authors_df = df.drop_duplicates(subset='author.steamid')
-    plt.figure(figsize=(10, 6))
-    plt.scatter(x=unique_authors_df['author.num_reviews'], y = unique_authors_df['author.playtime_forever'], color = 'blue' , alpha = 0.6)
-    plt.title('Correlation between number of reviews and amount of time played')
-    plt.yticks(ticks=range(0, unique_authors_df['author.num_reviews'].max() + 1, 1000000)) 
-    plt.xticks(ticks=range(0, unique_authors_df['author.playtime_forever'].max() + 1, 1000000)) 
-    plt.xlabel('Value')
-    plt.show()
-
-
-    #Box Plot
-    plt.figure(figsize=(10, 6))
-    sns.boxplot(data = df[['comment_count', 'app_id']], x = 'app_id', y = 'comment_count')
-    plt.xticks([])
-    plt.title('Distribution of Number of Comments amongst Reviews')
-    plt.show()
 
 def highest_lowest_reviews_applications(df):
 
@@ -142,12 +127,12 @@ def highest_lowest_reviews_applications(df):
 
 def reviews_count_plot(df):
     
+    # Group by app_name and compute the number of reviews per app 
     review_counts = df.groupby('app_name').size().reset_index(name='count_reviews')
+    # Sort the Dataframe in descending order
     review_counts = review_counts.sort_values(by='count_reviews', ascending=False)
 
-
-
-    #Create the bar plot
+    #Create the bar plot with x = 'app_name' and y = 'count_reviews'
     plt.figure(figsize=(10, 6))
     sns.barplot(data=review_counts, x='app_name', y='count_reviews')
     plt.title('Number of Reviews for Each Application', fontsize=12)
@@ -163,12 +148,18 @@ def reviews_count_plot(df):
 
 def puchased_gratis_reviewers(df):
 
+    # Obtain the 5 apps with the most reviews
     top_5_apps = df['app_name'].value_counts().head(5)
     top_5_apps_names = top_5_apps.index
+    # Create a Datframe from a Series
     total_number_of_reviewers =   pd.DataFrame(top_5_apps)
 
+    # Filter based on the app_name is in the top most reviewed apps and sum the numbers
+    # of reviewers that have purchased the app or received for free with the sum()
     reviewers_purchased = df[(df['app_name'].isin(top_5_apps_names))].groupby('app_name')['steam_purchase'].sum()
     reviewers_gratis = df[(df['app_name'].isin(top_5_apps_names))].groupby('app_name')['received_for_free'].sum()
+    
+    # Create 2 Dataframes with the distributions of the reviewers
     reviewers_purchased = pd.DataFrame({
     'percentage_of_purchase_reviewers': round(reviewers_purchased * 100 / total_number_of_reviewers['count'], 2)
     })
@@ -232,75 +223,14 @@ def statistical_correlation(df):
     
     # Calculate correlation coefficients
     pearson_corr, pearson_pvalue = pearsonr(reviews_score['recommended'], reviews_score['reviews_score'])
-    spearman_corr, spearman_pvalue = spearmanr(reviews_score['recommended'], reviews_score['reviews_score'])
-    kendall_corr, kendall_pvalue = kendalltau(reviews_score['recommended'], reviews_score['reviews_score'])
 
     print(f"Pearson correlation coefficient: {pearson_corr:.2f}, p-value: {pearson_pvalue:.4f}")
-    print(f"Spearman correlation coefficient: {spearman_corr:.2f}, p-value: {spearman_pvalue:.4f}")
-    print(f"Kendall correlation coefficient: {kendall_corr:.2f}, p-value: {kendall_pvalue:.4f}")
-
     # Interpretation
     alpha = 0.05  # significance level
     if pearson_pvalue < alpha:
         print("There is a statistically significant linear correlation (Pearson).")
     else:
         print("There is no statistically significant linear correlation (Pearson).")
-
-    if spearman_pvalue < alpha:
-        print("There is a statistically significant monotonic correlation (Spearman).")
-    else:
-        print("There is no statistically significant monotonic correlation (Spearman).")
-
-    if kendall_pvalue < alpha:
-        print("There is a statistically significant monotonic correlation (Kendall).")
-    else:
-        print("There is no statistically significant monotonic correlation (Kendall).")
-
-
-    
-translator = Translator()
-
-language_codes = {
-    'english': 'en',
-    'schinese': 'zh-cn',  
-    'russian': 'ru',
-    'brazilian': 'pt',    
-    'spanish': 'es',
-    'german': 'de',
-    'turkish': 'tr',
-    'korean': 'ko',
-    'french': 'fr',
-    'polish': 'pl',
-    'tchinese': 'zh-tw',  
-    'czech': 'cs',
-    'italian': 'it',
-    'thai': 'th',
-    'japanese': 'ja',
-    'portuguese': 'pt',   
-    'swedish': 'sv',
-    'dutch': 'nl',
-    'hungarian': 'hu',
-    'latam': 'es-419',   
-    'danish': 'da',
-    'finnish': 'fi',
-    'norwegian': 'no',
-    'romanian': 'ro',
-    'ukrainian': 'uk',
-    'greek': 'el',
-    'bulgarian': 'bg',
-    'vietnamese': 'vi'
-}
-# Function to translate non-English text to English
-def translate_to_english(text, lang_name):
-    try:
-        lang = language_codes.get(lang_name)
-        if lang != 'en':
-            translated = translator.translate(text, src=lang, dest='en').text
-            return translated
-        else:
-            return text
-    except Exception as e:
-        return text
 
 
 nltk.download('vader_lexicon')
@@ -328,8 +258,6 @@ def sentiment_classification(df):
     df_top_languages = df[df['language'].isin(top_languages)]
 
     df_top_languages = df_top_languages[df_top_languages['review'].notna()]
-
-
     
     # Translate non-English reviews to English
     # df_top_languages['translated_review'] = df_top_languages.apply(lambda row: translate_to_english(row['review'], row['language']), axis=1)
@@ -360,9 +288,10 @@ def comparison_sentiment_recommendations(df):
 
 
 def correlation_sentiment_helpful_votes(df):
+    # Classify in (0,1,2) the 3 categories (neutral, positive, negative)
     df['sentiment'] = df['sentiment'].astype('category').cat.codes
 
-
+    # Create a scatter plot between the number of helpful votes and the sentiment category
     plt.figure(figsize=(10, 6))
     sns.scatterplot(data=df, x='sentiment', y='votes_helpful')
 
@@ -405,4 +334,81 @@ def algorithmic_question(n, k):
     if no_fail: # if the list is good
         lista[0] += reminder # sum reminder to the first element
         print("YES\n", *lista) # print yes and the items
+
+
+def probability_one_helpful_vote(df):
+
+    # Compute the number of reviews with zero helpful votes
+    # Calculate a Series with the number of votes for each unique value present
+    vote_counts = df[df['votes_helpful'] == 0]
+
+
+    # Compute the total number of reviews
+    total_helpful_reviews = df.shape[0]
+    zero_helpful_reviews = vote_counts.shape[0]
+
+
+    return zero_helpful_reviews / total_helpful_reviews if total_helpful_reviews > 0 else 0
+
+
+def conditional_probability_recommended(df):
+    # Compute the number of reviews with zero helpful votes
+    # Calculate a Series with the number of votes for each unique value present filtering by reviews not reccomended (intersection)
+    total_not_recommended_reviews = df[df['recommended'] == False]
+    total_not_recommended_and_more_than_one_vote_reviews = total_not_recommended_reviews[total_not_recommended_reviews['votes_helpful'] >= 1].shape[0]
+
+
+    # Total Number of not recommended reviews 
+    total_not_recommended_reviews = total_not_recommended_reviews.shape[0]
+
+    
+    return total_not_recommended_and_more_than_one_vote_reviews / total_not_recommended_reviews if total_not_recommended_reviews > 0 else 0
+
+
+def check_probability_independence(df):
+    
+    # We Sort the DataFrame based on the column timestamp_created in descending order
+    df = df.sort_values(by='timestamp_created', ascending=False)
+
+    # Drop the Duplicates of the column author.steamid because we only wanna extract the last value
+    # of the column 'author.num_reviews', the most recent one
+    df = df.drop_duplicates(subset='author.steamid', keep='first')
+    # Create a contingency table
+    contingency_table = pd.crosstab(df['votes_helpful'] >= 1, df['author.num_reviews'] >= 5)
+
+    # Apply the Chi-Square test
+    chi2, p_value, dof, expected = chi2_contingency(contingency_table)
+
+    print(f"Chi-Square Test: Chi2={chi2}, p-value={p_value}")
+
+    # Result interpretation
+    if p_value < 0.05:
+        print("The two events are NOT independent (significant at 95%)")
+    else:
+        print("The two events ARE independent (not significant)")
+
+
+def check_correlation(df):
+
+    # Data Preparation to get only the rows with unique reviewers and their latest infos
+    # About num_games_owned and num_reviews_submitted
+    df = df.sort_values(by='timestamp_created', ascending=False)
+
+    # Drop the Duplicates of the column author.steamid
+    df = df.drop_duplicates(subset='author.steamid', keep='first')
+
+    # Calculate summary statistics for the two columns
+    print(df[['author.num_games_owned', 'author.num_reviews']].describe())
+    
+    # Correlation
+    # We Compute the Pearson Index to quantify the correlation between the two features
+    # Pearson correlation
+    pearson_corr, p_value_pearson = pearsonr(df['author.num_games_owned'], df['author.num_reviews'])
+    print("Pearson correlation coefficient:", pearson_corr, "p-value:", p_value_pearson)
+
+
+
+
+
+
 
