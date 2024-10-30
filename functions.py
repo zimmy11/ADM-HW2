@@ -179,7 +179,11 @@ sia = SentimentIntensityAnalyzer()
 
 # Function to classify sentiment
 def classify_sentiment(text):
+
+    # We compute a sentiment score based on the text
     sentiment_scores = sia.polarity_scores(text)
+
+    # We extract the compound score through the sentiment Analyzer to determine the overall sentiment 
     polarity = sentiment_scores['compound']
     if polarity > 0:
         return 'positive'
@@ -196,24 +200,26 @@ def sentiment_classification(df):
     # Filter the DataFrame to only include the top 3 languages
     df_top_languages = df[df['language'].isin(top_languages)]
 
+    # We filter the DataFrame removing the null values from the analysis
     df_top_languages = df_top_languages[df_top_languages['review'].notna()]
     
     # Translate non-English reviews to English
     # df_top_languages['translated_review'] = df_top_languages.apply(lambda row: translate_to_english(row['review'], row['language']), axis=1)
 
-    #  Perform sentiment analysis
+    #  We perform sentiment analysis applying each review's text the function we've defined previously
     df_top_languages['sentiment'] = df_top_languages['review'].apply(classify_sentiment)
 
     return df_top_languages
 
 def compute_distribution(df):
+    # We count the number of positive, negativea and neutral reviews obtaining the frequencies of each using the argument normalize = True
     sentiment_distribution = df['sentiment'].value_counts(normalize=True) * 100
     # Display sentiment distribution
     print("Sentiment Distribution (in %):")
     print(sentiment_distribution)
 
-    # Define vibrant colors for the pie chart
-    colors = ['#FF9999', '#66B3FF', '#99FF99']
+    # We want this three colors for the pie chart
+    colors = [ '#99FF99', '#66B3FF','#8B0000']
 
     # Create the pie chart
     plt.figure(figsize=(8, 8))
