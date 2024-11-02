@@ -1,6 +1,6 @@
 # Homework 2 - Videogames Reviews
 
-The purpose of this project was to conduct **EDA** (Exploratory Data Analysis) on a [dataset of Steam's reviews](http://www.nyc.gov/html/tlc/html/about/trip_record_data.shtml) and to answer to some questions.
+The purpose of this project was to conduct **EDA** (Exploratory Data Analysis) on a [Steam's dataset of reviews](https://www.kaggle.com/najzeko/steam-reviews-2021) and to answer to some questions.
 
 The repository contains the following files:
 1. __`main.ipynb`__:
