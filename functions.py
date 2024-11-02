@@ -300,9 +300,12 @@ def algorithmic_question(n, k):
                     lista[i] += 1
                 else:
                     lista[i] -= 1
-    if no_fail: # if the list is good
+    if no_fail and n//k != 0: # if the list is good
         lista[0] += reminder # sum reminder to the first element
         print("YES\n", *lista) # print yes and the items
+    else: 
+        print("NO")
+
 
 
 def probability_one_helpful_vote(df):
