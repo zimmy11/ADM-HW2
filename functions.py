@@ -2,7 +2,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-from scipy.stats import pearsonr
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 from scipy.stats import chi2_contingency
@@ -161,16 +160,10 @@ def statistical_correlation(df):
     plt.grid(True, linestyle='--', alpha=0.7)
     plt.show()
     
-    # Calculate correlation coefficients
-    pearson_corr, pearson_pvalue = pearsonr(reviews_score['recommended'], reviews_score['reviews_score'])
+    # Calculate Spearman correlation coefficient
+    spearman_corr = reviews_score['recommended'].corr(reviews_score['reviews_score'], method = 'spearman')
 
-    print(f"Pearson correlation coefficient: {pearson_corr:.2f}, p-value: {pearson_pvalue:.4f}")
-    # Interpretation
-    alpha = 0.05  # significance level
-    if pearson_pvalue < alpha:
-        print("There is a statistically significant linear correlation (Pearson).")
-    else:
-        print("There is no statistically significant linear correlation (Pearson).")
+    print(f"Spearman correlation coefficient: {spearman_corr:.2f}")
 
 
 
@@ -178,41 +171,41 @@ def statistical_correlation(df):
 sia = SentimentIntensityAnalyzer()
 
 # Function to classify sentiment
-def classify_sentiment(text):
+def identify_sentiment(score):
 
-    # We compute a sentiment score based on the text
-    sentiment_scores = sia.polarity_scores(text)
-
-    # We extract the compound score through the sentiment Analyzer to determine the overall sentiment 
-    polarity = sentiment_scores['compound']
-    if polarity > 0:
+    if score > 0:
         return 'positive'
-    elif polarity < 0:
+    elif score < 0:
         return 'negative'
     else:
         return 'neutral'
     
-def sentiment_classification(df):
+def get_sentiment_score(text):
+    # We compute a sentiment score based on the text
+    sentiment_scores = sia.polarity_scores(text)
+    return sentiment_scores['compound']
 
-     # Count the occurrences of each language
+    
+def sentiment_classification(df):
+     # Count the occurrences of each language and extract the most used
     top_languages = df['language'].value_counts().nlargest(1).index.tolist()
 
-    # Filter the DataFrame to only include the top 3 languages
+    # Filter the DataFrame to only include the top languages
     df_top_languages = df[df['language'].isin(top_languages)]
 
     # We filter the DataFrame removing the null values from the analysis
     df_top_languages = df_top_languages[df_top_languages['review'].notna()]
-    
-    # Translate non-English reviews to English
-    # df_top_languages['translated_review'] = df_top_languages.apply(lambda row: translate_to_english(row['review'], row['language']), axis=1)
 
-    #  We perform sentiment analysis applying each review's text the function we've defined previously
-    df_top_languages['sentiment'] = df_top_languages['review'].apply(classify_sentiment)
+    #  We perform sentiment analysis applying each review's text the function we've defined previously returning a sentiment score 
+    df_top_languages['sentiment_score'] = df_top_languages['review'].apply(get_sentiment_score)
+    
+    #  We perform sentiment analysis identifying if the review is positive, neutral or negative
+    df_top_languages['sentiment'] = df_top_languages['sentiment_score'].apply(identify_sentiment)
 
     return df_top_languages
 
 def compute_distribution(df):
-    # We count the number of positive, negativea and neutral reviews obtaining the frequencies of each using the argument normalize = True
+    # We count the number of positive, negative and neutral reviews obtaining the frequencies of each using the argument normalize = True
     sentiment_distribution = df['sentiment'].value_counts(normalize=True) * 100
     # Display sentiment distribution
     print("Sentiment Distribution (in %):")
@@ -250,21 +243,35 @@ def comparison_sentiment_recommendations(df):
 
 
 def correlation_sentiment_helpful_votes(df):
-    # Classify in (0,1,2) the 3 categories (neutral, positive, negative)
-    df['sentiment'] = df['sentiment'].astype('category').cat.codes
+
+    # We create a DataFrame of data grouped by app_name 
+    grouped_df = df.groupby('app_name').agg(
+        average_sentiment_score=('sentiment_score', 'mean'),
+        total_helpful_votes=('votes_helpful', 'sum'),
+        total_recommended=('recommended', 'count')).reset_index()
+
+    #Compute the average of the two columns to create the scatter plot
+    grouped_df['helpful_votes_recommended_ratio'] = grouped_df['total_helpful_votes'] / grouped_df['total_recommended']
 
     # Create a scatter plot between the number of helpful votes and the sentiment category
     plt.figure(figsize=(10, 6))
-    sns.scatterplot(data=df, x='sentiment', y='votes_helpful')
-
-    plt.title('Scatter Plot: Sentiment vs Number of Helpful Votes')
-    plt.xlabel('Sentiment (Positive, Neutral, Negative)')
-    plt.ylabel('Number of Helpful Votes')
+    
+    sns.scatterplot(data=grouped_df, x='average_sentiment_score', y='helpful_votes_recommended_ratio')
+    plt.ylim(0, 20)
+    plt.title('Scatter Plot: Average Sentiment Score vs Helpful Votes Ratio')
+    plt.xlabel('Average Sentiment Score per App')
+    plt.ylabel('Helpful Votes Ratio per App')
 
 
     # Show
     plt.grid(True)
     plt.show()
+
+    # Calculate Pearson correlation coefficient
+    pearson_corr = grouped_df['average_sentiment_score'].corr(grouped_df['helpful_votes_recommended_ratio'], method = 'pearson')
+
+    print(f"Pearson correlation coefficient: {pearson_corr:.2f}")
+    return grouped_df
 
 
 
@@ -352,21 +359,15 @@ def check_probability_independence(df):
 
 def check_correlation(df):
 
-    # Data Preparation to get only the rows with unique reviewers and their latest infos
-    # About num_games_owned and num_reviews_submitted
-    df = df.sort_values(by='timestamp_created', ascending=False)
-
-    # Drop the Duplicates of the column author.steamid
-    df = df.drop_duplicates(subset='author.steamid', keep='first')
-
-    # Calculate summary statistics for the two columns
-    print(df[['author.num_games_owned', 'author.num_reviews']].describe())
+       # Calculate summary statistics for the two columns
+    print(f"The table describing the major properties of the columns num_games_owned and num_reviews of the DataFrame:\n {df[['author.num_games_owned', 'author.num_reviews']].describe()}")
     
     # Correlation
-    # We Compute the Pearson Index to quantify the correlation between the two features
-    # Pearson correlation
-    pearson_corr, p_value_pearson = pearsonr(df['author.num_games_owned'], df['author.num_reviews'])
-    print("Pearson correlation coefficient:", pearson_corr, "p-value:", p_value_pearson)
+    # We Compute the Spearman Index to quantify the correlation between the two features
+    # Spearman correlation
+    spearman_corr = df['author.num_games_owned'].corr(df['author.num_reviews'], method = 'spearman')
+    print("Spearman correlation coefficient:", spearman_corr)
+
 
 
 
