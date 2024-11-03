@@ -383,7 +383,7 @@ def time_vs_relevance(df):
     relevence = df.review_score
 
     # compute the robust scaling to normalize the value
-    relevence = (relevence - np.median(relevence)) / (np.percentile(relevence, 75) - np.percentile(relevence, 25))
+    relevence = (relevence - np.nanmedian(relevence)) / (np.nanpercentile(relevence, 75) - np.nanpercentile(relevence, 25))
 
     # fix the values to be in a range between 10-0
     df.loc[:,"review_score"] = 10*(relevence - np.min(relevence)) / (np.max(relevence) - np.min(relevence))
@@ -403,10 +403,10 @@ def plot_time_vs_revewscore(plot_df, label = str):
     # scatterplot of review score over hours of playtime
     sns.scatterplot(x="playtime", y="review_score", color=col, data= plot_df)
     # here i get the value of the first and third quartile to display the skewness of the distribution
-    q1 = np.percentile(plot_df.playtime, 25)
-    q3 = np.percentile(plot_df.playtime, 75)
+    q1 = plot_df["playtime"].quantile(0.25)
+    q3 = plot_df["playtime"].quantile(0.75)
     # here i plot the lines of the quartiles
-    plt.axvline(q1, color='red', linestyle='--', label=f'25th Percentile (Q3): {q1:.2f}')
+    plt.axvline(q1, color='red', linestyle='--', label=f'25th Percentile (Q1): {q1:.2f}')
     plt.axvline(q3, color='red', linestyle='--', label=f'75th Percentile (Q3): {q3:.2f}')
     # here i add a tile to the plot
     plt.title(label + " Review Score. " + str(len(plot_df)) + " reviews analized")
@@ -417,24 +417,23 @@ def plot_time_vs_revewscore(plot_df, label = str):
     plt.legend(loc="upper right")
     plt.show()  # Show the plot
 
+
+
 def plot_experience_vs_reviewscore(df_plot):
     # create an empty plot
     plt.figure(figsize=(10,6))
-    df_plot["author.playtime_forever"] = np.absolute(df_plot["author.playtime_forever"])
+
+    # make shure that the time is positive
+    df_plot.loc[:,"final_time"] = (df_plot["author.playtime_forever"].abs() / 3600)
+
     # scatterplot of total time spent on the pc versus the review socre, a person levaing multiple review will have the sae total play time
-    sns.scatterplot(x= "author.playtime_forever", y = "review_score", data = df_plot)
-    # first and thirs quartile to observe skewness
-    q1 = np.percentile(df_plot["author.playtime_forever"], 25)
-    q3 = np.percentile(df_plot["author.playtime_forever"], 75)
-    # plot lines at the quartiles
-    plt.axvline(q1, color='red', linestyle='--', label=f'25th Percentile (Q3): {q1:.2f}')
-    plt.axvline(q3, color='red', linestyle='--', label=f'75th Percentile (Q3): {q3:.2f}')
+    sns.scatterplot(x= "final_time", y = "review_score", data = df_plot)
+
     # axis names
     plt.xlabel("Total time spent gaming")
     plt.ylabel("joint normalized review score")
+    
     # a name to the plot
     plt.title("relation between experience and review relevance")
-    # add a legend to the plot
-    plt.legend(loc="upper right")
     plt.show()  # Show the plot
     
